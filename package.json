@@ -1,0 +1,59 @@
+{
+  "name": "stagecheck",
+  "version": "0.1.0",
+  "description": "Review npm releases before they go live: diffs a staged (or any) package version against the last one and flags supply-chain red flags such as new install scripts, credential access, obfuscated code and exfiltration endpoints. Zero dependencies.",
+  "keywords": [
+    "npm",
+    "security",
+    "supply-chain",
+    "staged-publishing",
+    "npm-stage",
+    "release",
+    "review",
+    "diff",
+    "malware",
+    "install-scripts",
+    "provenance",
+    "ci"
+  ],
+  "homepage": "https://github.com/daniel63194/stagecheck#readme",
+  "bugs": "https://github.com/daniel63194/stagecheck/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/daniel63194/stagecheck.git"
+  },
+  "license": "MIT",
+  "author": "Daniel Eremeev (https://danieleremeev.dev)",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "stagecheck": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

@@ -1,0 +1,10 @@
+export { readTarball, isBinary } from './tar.js';
+export type { TarFile, ReadTarballOptions } from './tar.js';
+export { diffFiles, addedLines, diffManifests, DEPENDENCY_FIELDS } from './diff.js';
+export type { FileChange, FileStatus, Manifest, ManifestDiff, MapDiff, DependencyField } from './diff.js';
+export { runRules, LINE_PATTERNS, INSTALL_SCRIPTS, SEVERITIES, formatBytes } from './rules.js';
+export type { Finding, Severity, RuleContext } from './rules.js';
+export { reviewFiles, reviewTarballs, worstSeverity, failsAt, ignoreMatcher } from './review.js';
+export type { Review, ReviewOptions } from './review.js';
+export { renderText, renderMarkdown, renderJson, displaySafe } from './report.js';
+export type { TextOptions } from './report.js';

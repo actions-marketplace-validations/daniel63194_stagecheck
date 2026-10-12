@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }}, Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        node: [22, 24]
+        include:
+          # src/npm.ts has Windows-specific code for finding and running npm.
+          - os: windows-latest
+            node: 24
+          - os: macos-latest
+            node: 24
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test # builds first
+      - name: CLI smoke test
+        shell: bash
+        run: |
+          node dist/cli.js --version
+          node dist/cli.js --help | grep -q "stagecheck ci"
+      - run: npm pack --dry-run
+
+  runtime-node20:
+    # The published package supports Node >= 20.19 even though the dev tooling needs 22+.
+    name: Runtime check (Node 20)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci && npm run build
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 20
+      - run: |
+          node dist/cli.js --version
+          node --input-type=module -e "
+            const m = await import('./dist/index.js');
+            const files = new Map([['package.json', { path: 'package.json', mode: 420, data: Buffer.from('{\"name\":\"x\",\"version\":\"1.0.0\",\"scripts\":{\"postinstall\":\"node a.js\"}}') }]]);
+            const r = m.reviewFiles(null, files);
+            if (r.counts.high !== 1) process.exit(1);
+          "
+
+  dogfood:
+    # Review this repository's own next release against what is on npm.
+    name: Review the package with stagecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci && npm run build
+      # dist/rules.js contains the very patterns stagecheck looks for.
+      - run: node dist/cli.js ci --fail-on high --ignore credential-access:dist/rules.js --ignore pipe-to-shell:dist/rules.js

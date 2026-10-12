@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/daniel63194/stagecheck/discussions
+    about: Ask how to use stagecheck, or propose bigger changes.
+  - name: Report a vulnerability in stagecheck
+    url: https://github.com/daniel63194/stagecheck/security/advisories/new
+    about: Please report vulnerabilities privately, not as public issues.

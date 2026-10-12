@@ -1,0 +1,86 @@
+name: stagecheck npm release review
+description: Review an npm package for supply-chain red flags before release, then stage it with npm stage publish for a maintainer to approve.
+author: Daniel Eremeev
+branding:
+  icon: shield
+  color: green
+
+inputs:
+  fail-on:
+    description: Fail the step when a finding has this severity or higher (high, medium, low or none).
+    default: high
+  stage-publish:
+    description: >-
+      Stage the reviewed tarball with `npm stage publish` when the review passes.
+      Needs npm credentials (trusted publishing or NODE_AUTH_TOKEN); npm 11.15+ is installed if missing.
+    default: 'false'
+  publish-args:
+    description: Extra arguments for `npm stage publish`, separated by spaces, e.g. `--provenance --access public`.
+    default: ''
+  tag:
+    description: Dist-tag to compare against. Defaults to publishConfig.tag, then latest.
+    default: ''
+  working-directory:
+    description: Directory that contains the package.json to review.
+    default: .
+  version:
+    description: stagecheck version to run. Defaults to the version of this action.
+    default: ''
+
+outputs:
+  high:
+    description: Number of high-severity findings.
+    value: ${{ steps.run.outputs.high }}
+  medium:
+    description: Number of medium-severity findings.
+    value: ${{ steps.run.outputs.medium }}
+  low:
+    description: Number of low-severity findings.
+    value: ${{ steps.run.outputs.low }}
+  name:
+    description: Package name.
+    value: ${{ steps.run.outputs.name }}
+  version:
+    description: Package version that was reviewed.
+    value: ${{ steps.run.outputs.version }}
+  stage-id:
+    description: Id of the staged release, when stage-publish is on and the review passed.
+    value: ${{ steps.run.outputs.stage-id }}
+
+runs:
+  using: composite
+  steps:
+    - id: run
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      # Inputs reach the script through the environment, never by interpolation.
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        FAIL_ON: ${{ inputs.fail-on }}
+        STAGE_PUBLISH: ${{ inputs.stage-publish }}
+        PUBLISH_ARGS: ${{ inputs.publish-args }}
+        TAG: ${{ inputs.tag }}
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        version="${VERSION:-$(node -p 'require(process.env.ACTION_PATH + "/package.json").version')}"
+        if [[ ! "$version" =~ ^[0-9A-Za-z.+-]+$ ]]; then
+          echo "::error::Invalid stagecheck version: $version"
+          exit 2
+        fi
+
+        args=(ci --fail-on "$FAIL_ON")
+        if [[ -n "$TAG" ]]; then args+=(--tag "$TAG"); fi
+        if [[ "$STAGE_PUBLISH" == "true" ]]; then
+          if ! node -e 'const [a, b] = process.argv[1].split(".").map(Number); process.exit(a > 11 || (a === 11 && b >= 15) ? 0 : 1)' "$(npm --version)"; then
+            echo "npm $(npm --version) cannot stage releases; installing the latest npm."
+            npm install --global npm@latest || npm install --global npm@11
+          fi
+          args+=(--stage-publish)
+          if [[ -n "$PUBLISH_ARGS" ]]; then
+            read -r -a extra <<< "$PUBLISH_ARGS"
+            args+=(-- "${extra[@]}")
+          fi
+        fi
+
+        npm exec --yes --package="stagecheck@$version" -- stagecheck "${args[@]}"

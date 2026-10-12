@@ -1,0 +1,64 @@
+name: Release
+
+# Push a tag like v0.2.0 (`npm version minor && git push --follow-tags`).
+#
+# This workflow never publishes directly. It reviews the package with
+# stagecheck itself and, if the review passes, *stages* it on npm. Nothing is
+# live until a maintainer runs `npx stagecheck` locally and approves it with
+# 2FA. A stolen CI token or a poisoned dependency therefore cannot ship a
+# release on its own.
+#
+# npm authentication: configure this workflow (release.yml) as a Trusted
+# Publisher for the package on npmjs.com. No token is stored in the repo.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the GitHub release
+      id-token: write # npm trusted publishing and provenance
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - name: Use an npm version that supports staged publishing
+        run: npm install --global npm@latest
+      - run: npm ci
+      - name: Tag matches package.json version
+        run: test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"
+      - run: npm run typecheck
+      - run: npm test # builds first
+      - name: Check whether this version is already on npm
+        # e.g. the first release, which is staged by hand (see CONTRIBUTING.md)
+        id: npm
+        run: |
+          if npm view "stagecheck@${GITHUB_REF_NAME#v}" version > /dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Review and stage the release
+        if: steps.npm.outputs.published != 'true'
+        # dist/rules.js contains the very patterns stagecheck looks for.
+        run: >-
+          node dist/cli.js ci --stage-publish
+          --ignore credential-access:dist/rules.js --ignore pipe-to-shell:dist/rules.js
+          -- --provenance --access public
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STAGED: ${{ steps.npm.outputs.published != 'true' }}
+        run: |
+          notes=""
+          if [ "$STAGED" = "true" ]; then notes="Staged on npm; available once a maintainer approves it."; fi
+          gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag --notes "$notes"

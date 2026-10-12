@@ -1,0 +1,34 @@
+name: Missed detection or new rule
+description: A real or realistic malicious change that stagecheck did not flag.
+labels: ['detection']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If this is an **active** attack on a published package, report it to npm too (`npm report <package>` or https://www.npmjs.com/support).
+        Please don't paste working credentials or live attacker infrastructure you have not confirmed is already public.
+  - type: textarea
+    id: technique
+    attributes:
+      label: What the malicious release does
+      description: The technique, for example "writes a systemd unit from postinstall" or "loads a second stage from a GitHub gist".
+    validations:
+      required: true
+  - type: textarea
+    id: sample
+    attributes:
+      label: A minimal example
+      description: The relevant snippet or package.json change. A defanged sample is fine.
+      render: js
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: Advisories, write-ups or affected package versions.
+  - type: textarea
+    id: noise
+    attributes:
+      label: Legitimate uses
+      description: Do ordinary packages do something similar? This helps pick the severity and avoid false positives.

@@ -1,0 +1,37 @@
+name: False positive
+description: stagecheck flagged a harmless change.
+labels: ['false positive']
+body:
+  - type: markdown
+    attributes:
+      value: Thanks! False-positive reports are how the rules get better.
+  - type: input
+    id: command
+    attributes:
+      label: Command
+      description: Ideally a `review` of public versions, so the finding can be reproduced.
+      placeholder: npx stagecheck review some-package@1.2.0 some-package@1.3.0
+    validations:
+      required: true
+  - type: textarea
+    id: finding
+    attributes:
+      label: The finding
+      description: Paste the line(s) from the report.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it's harmless
+      description: What the code actually does, and why the rule shouldn't fire.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: stagecheck version
+      placeholder: 0.1.0
+    validations:
+      required: true
