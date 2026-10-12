@@ -1,6 +1,6 @@
 {
   "name": "stagecheck",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Review npm releases before they go live: diffs a staged (or any) package version against the last one and flags supply-chain red flags such as new install scripts, credential access, obfuscated code and exfiltration endpoints. Zero dependencies.",
   "keywords": [
     "npm",
@@ -45,7 +45,7 @@
     "node": ">=20.19"
   },
   "scripts": {
-    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json && node -e \"require('fs').chmodSync('dist/cli.js',0o755)\"",
     "typecheck": "tsc --noEmit",
     "test": "npm run build && vitest run",
     "test:watch": "vitest",
