@@ -1,5 +1,5 @@
 name: stagecheck npm release review
-description: Review an npm package for supply-chain red flags before release, then stage it with npm stage publish for a maintainer to approve.
+description: Review npm releases for supply-chain red flags, then stage them with npm stage publish for a maintainer to approve.
 author: Daniel Eremeev
 branding:
   icon: shield
