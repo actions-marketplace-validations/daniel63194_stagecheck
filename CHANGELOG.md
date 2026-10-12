@@ -4,6 +4,13 @@ All notable changes to this project are documented here. This project follows [S
 
 ## Unreleased
 
+## 0.1.3
+
+### Fixed
+
+- A crafted publisher name could make the publisher comparison very slow. Found by CodeQL.
+- A backslash before `|` in the evidence could break the findings table in the Markdown report. Found by CodeQL.
+
 ## 0.1.2
 
 ### Fixed

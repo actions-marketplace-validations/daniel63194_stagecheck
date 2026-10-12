@@ -78,6 +78,12 @@ describe('package.json rules', () => {
     expect(rules(r)).toEqual(expect.arrayContaining(['low:entry-points', 'low:version-order', 'medium:publisher-change']));
   });
 
+  it('compares publisher names in linear time, even when crafted', () => {
+    const start = Date.now();
+    review(cleanPackage(), cleanPackage('1.0.1'), { stagedBy: `${'('.repeat(100_000)}x`, previousPublisher: `${' '.repeat(100_000)}x` });
+    expect(Date.now() - start).toBeLessThan(1000);
+  });
+
   it('treats the same publisher written differently as unchanged', () => {
     const r = review(cleanPackage(), cleanPackage('1.0.1'), { stagedBy: 'github-actions (oidc)', previousPublisher: 'GitHub Actions' });
     expect(rules(r)).not.toContain('medium:publisher-change');

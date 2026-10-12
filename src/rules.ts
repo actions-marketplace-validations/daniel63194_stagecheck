@@ -172,6 +172,20 @@ const DEPENDENCY_LABEL: Record<(typeof DEPENDENCY_FIELDS)[number], [string, stri
 
 const NON_REGISTRY_SPEC = /^(?:git\+|git:|github:|gitlab:|bitbucket:|gist:|https?:|file:|link:)|^[\w.-]+\/[\w.-]+(?:#.*)?$/i;
 
+/**
+ * A publisher name for comparison: "github-actions (oidc)" and "GitHub Actions"
+ * are the same publisher. Written without a regular expression for the trailing
+ * "(…)" so that long, crafted names cannot make it slow.
+ */
+function who(name: string): string {
+  let s = name.trimEnd();
+  if (s.endsWith(')')) {
+    const open = s.lastIndexOf('(');
+    if (open !== -1) s = s.slice(0, open);
+  }
+  return s.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
 function parseSemver(v: string): number[] | null {
   const m = /^(\d+)\.(\d+)\.(\d+)/.exec(v);
   return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
@@ -253,8 +267,6 @@ export function runRules(ctx: RuleContext): Finding[] {
     }
   }
 
-  // "github-actions (oidc)" and "GitHub Actions" are the same publisher.
-  const who = (s: string): string => s.replace(/\s*\([^)]*\)\s*$/, '').toLowerCase().replace(/[^a-z0-9]/g, '');
   if (ctx.stagedBy && ctx.previousPublisher && who(ctx.stagedBy) !== who(ctx.previousPublisher)) {
     add({ rule: 'publisher-change', severity: 'medium', message: `staged by ${ctx.stagedBy}, but the previous version was published by ${ctx.previousPublisher}` });
   }

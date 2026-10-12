@@ -166,6 +166,32 @@ describe('fuzz: review', () => {
   });
 });
 
+/** Table cell delimiters in a GitHub Markdown row: `|` not escaped by a backslash. */
+function cellDelimiters(row: string): number {
+  let n = 0;
+  for (let i = 0; i < row.length; i++) {
+    if (row[i] === '\\') i++;
+    else if (row[i] === '|') n++;
+  }
+  return n;
+}
+
+describe('fuzz: Markdown report', () => {
+  it('keeps every findings row at three cells, whatever the evidence contains', () => {
+    const tricky = fc.string({ unit: fc.constantFrom('\\', '|', '`', '*', '<', 'a', ' ', '\n'), maxLength: 40 });
+    fc.assert(
+      fc.property(tricky, tricky, (a, b) => {
+        const after = readTarball(makeTarball({ 'package.json': '{"name":"demo","version":"1.0.1"}', [`lib/${a.replace(/[^a-z]/g, '') || 'x'}.js`]: `fetch('https://webhook.site/x') // ${a}\nrequire('child_process') // ${b}\n` }));
+        const md = renderMarkdown(reviewFiles(null, after));
+        const rows = md.split('\n').filter((l) => /^\| (?:🔴|🟠|⚪) /.test(l));
+        expect(rows.length).toBeGreaterThan(0);
+        for (const row of rows) expect(cellDelimiters(row)).toBe(4);
+      }),
+      RUNS,
+    );
+  });
+});
+
 describe('fuzz: helpers', () => {
   it('addedLines returns exactly the lines a change introduces', () => {
     const lines = fc.array(fc.constantFrom('a', 'b', 'c', '', 'd e'), { maxLength: 12 });
