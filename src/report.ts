@@ -86,8 +86,11 @@ export function renderText(r: Review, options: TextOptions = {}): string {
 
 const escapeMd = (s: string): string => displaySafe(s).replace(/[\\`*_[\]<>|#!~]/g, (ch) => `\\${ch}`);
 const code = (s: string): string => `\`${displaySafe(s).replace(/`/g, "'")}\``;
-/** A code span inside a table cell, where `|` must be escaped even in code. */
-const cellCode = (s: string): string => code(s).replace(/\|/g, '\\|');
+/**
+ * A code span inside a table cell. GitHub splits table rows on any `|` that is
+ * not escaped, even inside code, and `\\` escapes a backslash, so both are escaped.
+ */
+const cellCode = (s: string): string => code(s).replace(/[\\|]/g, (ch) => `\\${ch}`);
 
 /** A report for GitHub (job summaries, issues, pull request comments). */
 export function renderMarkdown(r: Review, extra: { approveCommand?: string } = {}): string {

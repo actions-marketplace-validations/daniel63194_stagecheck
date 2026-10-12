@@ -1,6 +1,6 @@
 {
   "name": "stagecheck",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Review npm releases before they go live: diffs a staged (or any) package version against the last one and flags supply-chain red flags such as new install scripts, credential access, obfuscated code and exfiltration endpoints. Zero dependencies.",
   "keywords": [
     "npm",

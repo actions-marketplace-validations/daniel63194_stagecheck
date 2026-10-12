@@ -39,6 +39,12 @@ describe('renderMarkdown', () => {
     expect(md).toContain('```sh\nnpm stage approve x\n```');
   });
 
+  it('escapes backslashes too, so a backslash before a pipe cannot end the cell', () => {
+    const r = reviewFiles(null, files({ 'package.json': '{"name":"demo","version":"1.0.0"}', 'a.js': "fetch('https://webhook.site/x') // a\\| b | c\n" }));
+    const row = renderMarkdown(r).split('\n').find((l) => l.includes('exfiltrate')) as string;
+    expect(row).toContain('a\\\\\\| b \\| c');
+  });
+
   it('keeps table rows intact when evidence contains pipes', () => {
     const md = renderMarkdown(risky);
     const row = md.split('\n').find((l) => l.includes('downloads and executes a script')) as string;
