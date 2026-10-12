@@ -4,6 +4,12 @@ All notable changes to this project are documented here. This project follows [S
 
 ## Unreleased
 
+## 0.1.2
+
+### Fixed
+
+- `npx stagecheck` could fail with "Permission denied" when npm reinstalled it over an existing link, for example in the npx cache. The CLI file now ships as executable.
+
 ## 0.1.1
 
 ### Fixed
