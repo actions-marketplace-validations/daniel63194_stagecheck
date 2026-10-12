@@ -2,11 +2,14 @@ name: Release
 
 # Push a tag like v0.2.0 (`npm version minor && git push --follow-tags`).
 #
-# This workflow never publishes directly. It reviews the package with
-# stagecheck itself and, if the review passes, *stages* it on npm. Nothing is
-# live until a maintainer runs `npx stagecheck` locally and approves it with
-# 2FA. A stolen CI token or a poisoned dependency therefore cannot ship a
-# release on its own.
+# This workflow never publishes directly. It packs the package once, reviews
+# that tarball with the stagecheck it just built and, if the review passes,
+# *stages* exactly that file on npm. Nothing is live until a maintainer runs
+# `npx stagecheck` locally and approves it with 2FA, so a stolen CI token or a
+# poisoned dependency cannot ship a release on its own.
+#
+# The same tarball gets a signed SLSA build provenance attestation and is
+# attached to the GitHub release with it.
 #
 # npm authentication: configure this workflow (release.yml) as a Trusted
 # Publisher for the package on npmjs.com. No token is stored in the repo.
@@ -19,11 +22,12 @@ permissions:
   contents: read
 
 jobs:
-  stage:
+  release:
     runs-on: ubuntu-latest
     permissions:
       contents: write # create the GitHub release
-      id-token: write # npm trusted publishing and provenance
+      id-token: write # npm trusted publishing, provenance and Sigstore signing
+      attestations: write # store the build provenance attestation
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -40,25 +44,57 @@ jobs:
         run: test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"
       - run: npm run typecheck
       - run: npm test # builds first
+
+      - name: Pack
+        id: pack
+        run: echo "file=$(npm pack --silent | tail -n 1)" >> "$GITHUB_OUTPUT"
+
       - name: Check whether this version is already on npm
-        # e.g. the first release, which is staged by hand (see CONTRIBUTING.md)
+        # e.g. the first release, which was staged by hand (see CONTRIBUTING.md)
         id: npm
+        env:
+          FILE: ${{ steps.pack.outputs.file }}
         run: |
-          if npm view "stagecheck@${GITHUB_REF_NAME#v}" version > /dev/null 2>&1; then
+          if published="$(npm view "stagecheck@${GITHUB_REF_NAME#v}" dist.integrity 2> /dev/null)" && [ -n "$published" ]; then
             echo "published=true" >> "$GITHUB_OUTPUT"
+            rebuilt="$(node -p "'sha512-' + require('crypto').createHash('sha512').update(require('fs').readFileSync(process.argv[1])).digest('base64')" "$FILE")"
+            if [ "$rebuilt" = "$published" ]; then
+              echo "reproducible=true" >> "$GITHUB_OUTPUT"
+              echo "$FILE is byte-for-byte identical to the published tarball."
+            else
+              echo "::warning::$FILE differs from the published stagecheck@${GITHUB_REF_NAME#v}, so it is not signed or attached."
+            fi
           fi
+
       - name: Review and stage the release
         if: steps.npm.outputs.published != 'true'
+        env:
+          FILE: ${{ steps.pack.outputs.file }}
         # dist/rules.js contains the very patterns stagecheck looks for.
         run: >-
-          node dist/cli.js ci --stage-publish
+          node dist/cli.js ci "$FILE" --stage-publish
           --ignore credential-access:dist/rules.js --ignore pipe-to-shell:dist/rules.js
           -- --provenance --access public
+
+      - name: Sign the tarball (SLSA build provenance)
+        id: attest
+        if: steps.npm.outputs.published != 'true' || steps.npm.outputs.reproducible == 'true'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ steps.pack.outputs.file }}
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          FILE: ${{ steps.pack.outputs.file }}
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
           STAGED: ${{ steps.npm.outputs.published != 'true' }}
         run: |
+          assets=()
+          if [ -n "$BUNDLE" ]; then
+            cp "$BUNDLE" "$FILE.sigstore.json"
+            assets=("$FILE" "$FILE.sigstore.json")
+          fi
           notes=""
           if [ "$STAGED" = "true" ]; then notes="Staged on npm; available once a maintainer approves it."; fi
-          gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag --notes "$notes"
+          gh release create "$GITHUB_REF_NAME" "${assets[@]}" --generate-notes --verify-tag --notes "$notes"
