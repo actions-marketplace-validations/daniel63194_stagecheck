@@ -109,13 +109,23 @@ export class NpmError extends Error {
   }
 }
 
-function lastLine(text: string): string {
-  return text.trim().split(/\r?\n/).filter(Boolean).pop() ?? '';
+const NOISE = /^(?:A complete log of this run|Log files were not written|errno |syscall |path )/i;
+
+/** npm's own explanation of a failure: the error code and its first message lines. */
+export function npmErrorDetail(r: NpmResult): string {
+  const lines = `${r.stderr}\n${r.stdout}`.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const errors = lines
+    .filter((l) => /^npm (?:error|ERR!)/.test(l))
+    .map((l) => l.replace(/^npm (?:error|ERR!)\s*/, ''))
+    .filter((l) => l !== '' && !NOISE.test(l));
+  const code = errors.find((l) => /^code /.test(l))?.slice(5);
+  const message = errors.filter((l) => !/^code /.test(l)).slice(0, 2).join(' ');
+  if (code || message) return [code, message].filter(Boolean).join(': ');
+  return lines.filter((l) => !NOISE.test(l)).pop() ?? `exit code ${r.code}`;
 }
 
 function fail(what: string, r: NpmResult): never {
-  const detail = lastLine(r.stderr) || lastLine(r.stdout) || `exit code ${r.code}`;
-  throw new NpmError(`${what} failed: ${detail.replace(/^npm (?:error|ERR!)\s*/, '')}`, r);
+  throw new NpmError(`${what} failed: ${npmErrorDetail(r)}`, r);
 }
 
 /** A package spec we are willing to pass to npm: a name, optionally @ an exact version or dist-tag. */

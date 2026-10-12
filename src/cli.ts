@@ -34,7 +34,7 @@ Usage:
   stagecheck list                 List pending staged releases
   stagecheck review <new>         Compare a version with the one before it
   stagecheck review <old> <new>   Compare two versions
-  stagecheck ci                   Pack this project and compare it with the published version (for CI)
+  stagecheck ci [<file.tgz>]      Compare this project, or a tarball you packed, with npm (for CI)
 
 <old> and <new> are package specs (name@1.2.3, name@next) or .tgz files.
 
@@ -177,7 +177,7 @@ async function cmdInteractive(opts: Options): Promise<Review[]> {
         }
       }
       const ok = await stageDecide('approve', item.id);
-      process.stdout.write(ok ? `Approved ${item.packageName}@${item.version}.\n\n` : 'Approval did not complete.\n\n');
+      process.stdout.write(ok ? `Approved ${item.packageName}@${item.version}.\n\n` : 'Approval did not complete (see npm\'s message above). The release is still staged: run stagecheck again to retry.\n\n');
     } else if (choice === 'r' || choice === 'reject') {
       const sure = await ask(`Rejecting permanently deletes this staged version. Reject ${item.packageName}@${item.version}? [y/N] `);
       if (sure === 'y' || sure === 'yes') {
@@ -210,13 +210,25 @@ async function cmdList(opts: Options): Promise<void> {
   }
 }
 
-async function cmdCi(opts: Options, passthrough: string[]): Promise<Review> {
+async function cmdCi(args: string[], opts: Options, passthrough: string[]): Promise<Review> {
+  if (args.length > 1) throw new UsageError('ci takes at most one .tgz file');
+  const given = args[0];
+  if (given !== undefined && (!TARBALL.test(given) || !existsSync(given))) throw new UsageError(`No such tarball: ${given}`);
   if (opts.stagePublish) await ensureStageSupport();
   const dir = scratchDir();
   try {
-    const after = await packDirectory(process.cwd());
-    const tarballPath = join(dir.path, 'package.tgz');
-    writeFileSync(tarballPath, after);
+    // Either the tarball given, or this project packed exactly as npm would.
+    // Whichever it is, the file that is reviewed is the file that gets staged.
+    let after: Buffer;
+    let tarballPath: string;
+    if (given !== undefined) {
+      tarballPath = resolve(given);
+      after = readTgz(tarballPath);
+    } else {
+      after = await packDirectory(process.cwd());
+      tarballPath = join(dir.path, 'package.tgz');
+      writeFileSync(tarballPath, after);
+    }
     const { name, version, tag } = manifestOf(after);
     // Before a version bump (e.g. on a pull request) the local version is already
     // on npm: compare with it, so the report shows only the unreleased changes.
@@ -344,7 +356,7 @@ async function main(argv: string[]): Promise<number> {
       return failsAt(review, opts.failOn) ? 1 : 0;
     }
     case 'ci': {
-      const review = await cmdCi(opts, passthrough);
+      const review = await cmdCi(rest, opts, passthrough);
       return failsAt(review, opts.failOn) ? 1 : 0;
     }
     default:

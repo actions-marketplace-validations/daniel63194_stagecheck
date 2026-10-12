@@ -1,6 +1,6 @@
 {
   "name": "stagecheck",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Review npm releases before they go live: diffs a staged (or any) package version against the last one and flags supply-chain red flags such as new install scripts, credential access, obfuscated code and exfiltration endpoints. Zero dependencies.",
   "keywords": [
     "npm",
@@ -53,6 +53,7 @@
   },
   "devDependencies": {
     "@types/node": "26.6.5",
+    "fast-check": "4.10.2",
     "typescript": "7.0.2",
     "vitest": "5.0.3"
   }
