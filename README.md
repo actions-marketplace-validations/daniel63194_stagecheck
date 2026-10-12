@@ -5,6 +5,7 @@
 [![npm](https://img.shields.io/npm/v/stagecheck)](https://www.npmjs.com/package/stagecheck)
 [![CI](https://github.com/daniel63194/stagecheck/actions/workflows/ci.yml/badge.svg)](https://github.com/daniel63194/stagecheck/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/daniel63194/stagecheck/badge)](https://scorecard.dev/viewer/?uri=github.com/daniel63194/stagecheck)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15405/badge)](https://www.bestpractices.dev/projects/15405)
 
 ```console
 $ npx stagecheck
