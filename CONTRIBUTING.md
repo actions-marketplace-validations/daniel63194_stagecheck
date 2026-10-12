@@ -61,6 +61,7 @@ If stagecheck flags a harmless release, please open a [false positive report](ht
 - Keep each pull request focused on one change.
 - `npm test` and `npm run typecheck` must pass.
 - Write commit messages that explain *why*.
+- New features and bug fixes come with tests. A pull request that changes behaviour without a test will not be merged.
 
 ## Releasing (maintainers)
 
