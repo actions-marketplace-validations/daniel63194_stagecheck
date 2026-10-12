@@ -167,12 +167,37 @@ describe('stagecheck ci', () => {
     expect(readFileSync(summary, 'utf8')).toContain('npm stage approve 11111111-2222-4333-8444-555555555555');
   });
 
+  it("shows npm's reason when staging fails, not the log file path", () => {
+    const stagePublishError = [
+      'npm error code ENEEDAUTH',
+      'npm error need auth This command requires you to be logged in to https://registry.npmjs.org/',
+      'npm error need auth You need to authorize this machine using `npm adduser`',
+      'npm error A complete log of this run can be found in: /Users/x/.npm/_logs/debug-0.log',
+      '',
+    ].join('\n');
+    const { state } = setState({ ...released, stagePublishError });
+    const r = run(['ci', '--stage-publish'], { FAKE_NPM_STATE: state });
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain('npm stage publish failed: ENEEDAUTH: need auth This command requires you to be logged in');
+    expect(r.stderr).not.toContain('complete log');
+  });
+
   it('refuses to stage a release with high-risk findings', () => {
     const { state, log } = setState({ packCwd: tgz.worm, packages: { demo: { versions: { '1.0.1': tgz.clean }, tags: { latest: '1.0.1' } } } });
     const r = run(['ci', '--stage-publish'], { FAKE_NPM_STATE: state });
     expect(r.code).toBe(1);
     expect(r.stderr).toContain('not staging demo@1.0.2');
     expect(calls(log).some((c) => c[1] === 'publish')).toBe(false);
+  });
+
+  it('reviews and stages a tarball you packed yourself, without packing again', () => {
+    const { state, log } = setState(released);
+    const r = run(['ci', tgz.clean as string, '--stage-publish'], { FAKE_NPM_STATE: state });
+    expect(r.code).toBe(0);
+    expect(r.stdout).toContain('demo 1.0.0 → 1.0.1');
+    expect(calls(log).some((c) => c[0] === 'pack' && c.includes('--pack-destination'))).toBe(false);
+    expect(calls(log).find((c) => c[1] === 'publish')?.[2]).toBe(tgz.clean);
+    expect(run(['ci', 'missing.tgz'], { FAKE_NPM_STATE: state }).stderr).toContain('No such tarball');
   });
 
   it('compares with the same version when it is already published', () => {

@@ -76,6 +76,8 @@ export function readTarball(archive: Uint8Array, options: ReadTarballOptions = {
     if (header.every((b) => b === 0)) break; // end of archive
 
     const size = octal(header, 124, 12);
+    // A negative size would move the cursor backwards and loop forever.
+    if (!Number.isSafeInteger(size) || size < 0) throw new Error('Invalid tar header: bad entry size');
     const type = String.fromCharCode(header[156] ?? 0);
     const dataStart = offset + BLOCK;
     const dataEnd = dataStart + size;

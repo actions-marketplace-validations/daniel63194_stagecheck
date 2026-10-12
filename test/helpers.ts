@@ -39,9 +39,10 @@ export function makeTarball(files: Record<string, Entry>, options: { root?: stri
         const name = Buffer.from(`${full}\0`, 'utf8');
         parts.push(header('././@LongLink', name.length, 0o644, 'L'), pad(name));
       } else {
+        // The length prefix counts bytes, including itself.
         const body = ` path=${full}\n`;
-        let len = body.length;
-        while (`${len}${body}`.length !== len) len = `${len}${body}`.length;
+        let len = Buffer.byteLength(body);
+        while (Buffer.byteLength(`${len}${body}`) !== len) len = Buffer.byteLength(`${len}${body}`);
         const record = Buffer.from(`${len}${body}`, 'utf8');
         parts.push(header('PaxHeader', record.length, 0o644, 'x'), pad(record));
       }

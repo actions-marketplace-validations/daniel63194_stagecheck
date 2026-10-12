@@ -58,6 +58,9 @@ if (cmd === '--version') {
   out(`${item.packageName}-${item.version}-${item.id}.tgz`);
 } else if (cmd === 'stage' && (sub === 'approve' || sub === 'reject')) {
   out(`Staged package ${third} ${sub === 'approve' ? 'approved and published successfully' : 'has been rejected'}.`);
+} else if (cmd === 'stage' && sub === 'publish' && state.stagePublishError) {
+  process.stderr.write(state.stagePublishError);
+  process.exit(1);
 } else if (cmd === 'stage' && sub === 'publish') {
   out(`+ ${state.stagePublishAs ?? 'demo@1.0.1'} (staged with id 11111111-2222-4333-8444-555555555555)`);
 } else {

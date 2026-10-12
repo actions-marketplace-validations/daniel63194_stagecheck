@@ -145,7 +145,12 @@ Not on GitHub? `npx stagecheck ci` works in any CI. It writes a Markdown report 
 npx stagecheck ci --stage-publish -- --provenance --access public
 ```
 
-The tarball that gets staged is the exact file that was reviewed. It is not packed a second time.
+The tarball that gets staged is the exact file that was reviewed. It is not packed a second time. If your pipeline already builds the tarball, for example to sign it or attach it to a release, pass it in and stagecheck reviews and stages that file:
+
+```sh
+npm pack
+npx stagecheck ci my-lib-1.2.0.tgz --stage-publish
+```
 
 ## What it checks
 
@@ -211,6 +216,7 @@ An entry is a rule id, optionally followed by `:` and a path glob (`*` matches w
 --no-color                        Plain output (NO_COLOR is respected too)
 
 ci only:
+[<file.tgz>]                      Review this tarball instead of packing the project
 --stage-publish                   Stage the reviewed tarball if the review passes
 --summary <file>                  Also write the Markdown report to this file
 ```
@@ -237,6 +243,15 @@ if (review.counts.high > 0) process.exit(1);
 stagecheck is a reviewing aid, not a malware scanner. It uses heuristics on the diff, so a determined attacker who knows the rules can write code that avoids them, for example by building strings at runtime. It does not execute code, follow dependencies or check package reputation. It catches the common, noisy patterns that real worms have used, and it makes the change set small enough for a human to actually read. Use it alongside, not instead of, 2FA, trusted publishing, provenance and lockfiles.
 
 For consumers, tools such as [GuardDog](https://github.com/DataDog/guarddog) or [Socket](https://socket.dev) scan packages and their dependency trees. `npm diff` shows a raw diff without any analysis. stagecheck focuses on the publisher's moment of decision: is this exact tarball what I meant to release?
+
+## Verifying stagecheck itself
+
+Every release since 0.1.1 is reviewed by stagecheck, staged by the [release workflow](.github/workflows/release.yml) and approved by a maintainer with 2FA. It ships with npm provenance. Each [GitHub release](https://github.com/daniel63194/stagecheck/releases) carries the npm tarball and a signed [SLSA build provenance](https://slsa.dev/provenance) attestation (`.sigstore.json`), so you can check that the file on npm was built from this repository:
+
+```sh
+npm pack stagecheck@0.1.1
+gh attestation verify stagecheck-0.1.1.tgz --repo daniel63194/stagecheck
+```
 
 ## Contributing
 

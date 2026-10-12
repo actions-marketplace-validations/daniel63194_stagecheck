@@ -4,6 +4,20 @@ All notable changes to this project are documented here. This project follows [S
 
 ## Unreleased
 
+## 0.1.1
+
+### Fixed
+
+- A crafted tarball with a negative entry size made stagecheck loop forever. Such tarballs are now rejected. Found by the new fuzz tests.
+- A new dependency whose name matches a built-in object property, such as `constructor`, was not reported as added.
+- When npm fails, stagecheck now shows npm's error message instead of the path to npm's log file, and says that a release whose approval failed is still staged.
+
+### Added
+
+- `stagecheck ci <file.tgz>` reviews a tarball you packed yourself, and with `--stage-publish` stages exactly that file.
+- Property-based fuzz tests (fast-check) for the tar reader, the rules and the reports.
+- GitHub releases carry the npm tarball and a signed SLSA build provenance attestation.
+
 ## 0.1.0
 
 First release.

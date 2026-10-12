@@ -40,6 +40,13 @@ describe('readTarball', () => {
     expect(() => readTarball(makeTarball({ 'big.txt': 'x'.repeat(100_000) }), { maxBytes: 10_000 })).toThrow();
   });
 
+  it('rejects a negative entry size instead of looping forever', () => {
+    const tar = makeTarball({ 'a.txt': 'x' }, { gzip: false });
+    tar.fill(0, 512 + 124, 512 + 136);
+    tar.write('-1000', 512 + 124, 'latin1');
+    expect(() => readTarball(tar)).toThrow(/bad entry size/);
+  });
+
   it('reads a tarball produced by npm pack', () => {
     const dir = mkdtempSync(join(tmpdir(), 'stagecheck-test-'));
     try {

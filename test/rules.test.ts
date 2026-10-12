@@ -64,6 +64,11 @@ describe('package.json rules', () => {
     expect(rules(r)).toEqual(['high:dependency-source']);
   });
 
+  it('reports dependencies whose names collide with Object.prototype', () => {
+    const r = review(cleanPackage(), cleanPackage('1.0.1', {}, { dependencies: { kleur: '^4.1.5', constructor: '1.0.0' } }));
+    expect(r.findings.find((f) => f.rule === 'dependency-added')?.evidence).toBe('constructor@1.0.0');
+  });
+
   it('flags new command-line programs', () => {
     expect(rules(review(cleanPackage(), cleanPackage('1.0.1', { 'cli.js': '#!/usr/bin/env node\n' }, { bin: { demo: 'cli.js' } })))).toContain('medium:bin-change');
   });

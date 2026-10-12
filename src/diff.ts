@@ -67,9 +67,15 @@ export interface ManifestDiff {
   readonly entryPoints: Record<string, { from: string | null; to: string | null }>;
 }
 
+/**
+ * An object without a prototype, so keys such as "constructor" or "__proto__"
+ * (which are valid in package.json) behave like any other key.
+ */
+const record = <T>(): Record<string, T> => Object.create(null) as Record<string, T>;
+
 function asStringMap(value: Json | undefined): Record<string, string> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
-  const out: Record<string, string> = {};
+  const out = record<string>();
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return out;
   for (const [k, v] of Object.entries(value)) out[k] = typeof v === 'string' ? v : JSON.stringify(v);
   return out;
 }
@@ -79,20 +85,22 @@ function binMap(manifest: Manifest): Record<string, string> {
   const bin = manifest.bin;
   if (typeof bin === 'string') {
     const name = typeof manifest.name === 'string' ? manifest.name.replace(/^@[^/]+\//, '') : 'bin';
-    return { [name]: bin };
+    const out = record<string>();
+    out[name] = bin;
+    return out;
   }
   return asStringMap(bin);
 }
 
 export function diffMaps(before: Record<string, string>, after: Record<string, string>): MapDiff {
-  const added: Record<string, string> = {};
-  const removed: Record<string, string> = {};
-  const changed: Record<string, { from: string; to: string }> = {};
+  const added = record<string>();
+  const removed = record<string>();
+  const changed = record<{ from: string; to: string }>();
   for (const [k, v] of Object.entries(after)) {
-    if (!(k in before)) added[k] = v;
+    if (!Object.hasOwn(before, k)) added[k] = v;
     else if (before[k] !== v) changed[k] = { from: before[k] as string, to: v };
   }
-  for (const [k, v] of Object.entries(before)) if (!(k in after)) removed[k] = v;
+  for (const [k, v] of Object.entries(before)) if (!Object.hasOwn(after, k)) removed[k] = v;
   return { added, removed, changed };
 }
 
@@ -106,8 +114,8 @@ export function diffManifests(before: Manifest | null, after: Manifest): Manifes
   }
   const entryPoints: ManifestDiff['entryPoints'] = {};
   for (const field of ENTRY_FIELDS) {
-    const from = field in old ? JSON.stringify(old[field]) : null;
-    const to = field in after ? JSON.stringify(after[field]) : null;
+    const from = Object.hasOwn(old, field) ? JSON.stringify(old[field]) : null;
+    const to = Object.hasOwn(after, field) ? JSON.stringify(after[field]) : null;
     if (from !== to) entryPoints[field] = { from, to };
   }
   return {
